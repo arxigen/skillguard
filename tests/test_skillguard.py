@@ -465,6 +465,19 @@ class TestSkillScanner:
         result = scanner.scan_text("This has CUSTOM_TRIGGER in it")
         assert any(f.rule_id == "CUSTOM-001" for f in result.findings)
 
+    def test_empty_rules_list_runs_no_rules(self):
+        scanner = SkillScanner(rules=[])
+        assert scanner.rules == []
+        result = scanner.scan_text(PROMPT_INJECTION_SKILL)
+        assert result.finding_count == 0
+        assert result.is_safe
+
+    def test_default_rules_are_all_rules(self):
+        assert SkillScanner().rules == ALL_RULES
+
+    def test_rules_none_uses_all_rules(self):
+        assert SkillScanner(rules=None).rules == ALL_RULES
+
     def test_empty_text_is_safe(self, scanner):
         result = scanner.scan_text("")
         assert result.is_safe
@@ -580,3 +593,17 @@ class TestUnreadableFiles:
         errors = [r for r in out["results"] if r["risk_level"] == "ERROR"]
         assert [r["skill"] for r in errors] == ["b.md"]
         assert "Permission denied" in errors[0]["error"]
+
+
+# ── CLI ────────────────────────────────────────────────────────
+
+
+def test_cli_version_prints_package_version(monkeypatch, capsys):
+    import skillguard
+    from skillguard.cli import main
+
+    monkeypatch.setattr(sys, "argv", ["skillguard", "--version"])
+    with pytest.raises(SystemExit) as exit_info:
+        main()
+    assert exit_info.value.code == 0
+    assert capsys.readouterr().out.strip() == f"skillguard {skillguard.__version__}"
